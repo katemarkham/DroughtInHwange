@@ -1,0 +1,33 @@
+---
+title: "ClimateWMA"
+author: "KateMarkham"
+date: "04/26/2022"
+output: html_document
+---
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(knitr)
+library(tidyverse)
+library(data.table)
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+#Import NDVI data and combine into single dataframe
+LST<-read_csv("LST_2015_16_WMA.csv")
+NDVIAvg<-read_csv("AvgNDVI_2015_16_WMA.csv")
+Precip<-read_csv("Precip_2015_16_WMA.csv")
+Soil1040<-read_csv("Soil_10_to_40_tavg_WMA.csv")
+
+LST <- LST %>%
+  group by(NAME)
+
+
+l=list(NDVIAvg,LST,Precip,Soil1040)
+WMA_data<-rbindlist(l, fill=TRUE, idcol=NULL)
+
+WMA_data2 <-WMA_data %>%
+select(NAME, AvgNDVI_MEAN, AvgNDVI_RANGE, AvgNDVI_MAX, AvgNDVI_STD, AvgNDVI_Year, AvgNDVI_Month, LST_MEAN, LST_MIN, LST_MAX, LST_RANGE,LST_STD,LST_Year, LST_Month, PRECIP_MEAN, PRECIP_MIN, PRECIP_MAX, PRECIP_RANGE, PRECIP_STD, PRECIP_Month, PRECIP_Year, Soil_10_40_MEAN, Soil_10_40_MIN, Soil_10_40_MAX, Soil_10_40_RANGE, Soil_10_40_STD, Soil_10_40_Year, Soil_10_40_Month) %>%
+    group_by(NAME) 
+
+# ```
