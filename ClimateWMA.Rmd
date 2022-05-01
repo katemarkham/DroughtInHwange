@@ -9,25 +9,36 @@ output: html_document
 library(knitr)
 library(tidyverse)
 library(data.table)
+library(readr)
+library(ggplot2)
 ```
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 
-#Import NDVI data and combine into single dataframe
-LST<-read_csv("LST_2015_16_WMA.csv")
-NDVIAvg<-read_csv("AvgNDVI_2015_16_WMA.csv")
-Precip<-read_csv("Precip_2015_16_WMA.csv")
-Soil1040<-read_csv("Soil_10_to_40_tavg_WMA.csv")
+#Import data
+LST_2015_16_WMA <- read_csv("LST_2015_16_WMA.csv")
+LST<-LST_2015_16_WMA %>% 
+  select(NAME, LST_MIN, LST_MAX, LST_RANGE, LST_MEAN,LST_STD, LST_MEDIAN, LST_PCT90, LST_Month, LST_Year)
+as.factor(LST$LST_Year)
+as.factor(LST$LST_Month)
+AvgNDVI_2015_16_WMA <- read_csv("AvgNDVI_2015_16_WMA.csv")
+AvgNDVI<-AvgNDVI_2015_16_WMA 
+as.factor(AvgNDVI$AvgNDVI_Year)
+as.factor(AvgNDVI$AvgNDVI_Month)
+Precip_2015_16_WMA <- read_csv("Precip_2015_16_WMA.csv",show_col_types = FALSE)
+Precip<-Precip_2015_16_WMA 
+as.factor(Precip$PRECIP_Month) 
+as.factor(Precip$PRECIP_Year)
+Soil_10_to_40_tavg_WMA <- read_csv("Soil_10_to_40_tavg_WMA.csv",show_col_types = FALSE)
+Soil1040<-Soil_10_to_40_tavg_WMA 
+as.factor(Soil1040$Soil_10_40_Year) 
+as.factor(Soil1040$Soil_10_40_Month)
+```
 
-LST <- LST %>%
-  group by(NAME)
+```{r}
 
-
-l=list(NDVIAvg,LST,Precip,Soil1040)
-WMA_data<-rbindlist(l, fill=TRUE, idcol=NULL)
-
-WMA_data2 <-WMA_data %>%
-select(NAME, AvgNDVI_MEAN, AvgNDVI_RANGE, AvgNDVI_MAX, AvgNDVI_STD, AvgNDVI_Year, AvgNDVI_Month, LST_MEAN, LST_MIN, LST_MAX, LST_RANGE,LST_STD,LST_Year, LST_Month, PRECIP_MEAN, PRECIP_MIN, PRECIP_MAX, PRECIP_RANGE, PRECIP_STD, PRECIP_Month, PRECIP_Year, Soil_10_40_MEAN, Soil_10_40_MIN, Soil_10_40_MAX, Soil_10_40_RANGE, Soil_10_40_STD, Soil_10_40_Year, Soil_10_40_Month) %>%
-    group_by(NAME) 
-
-# ```
+p1<-ggplot(AvgNDVI,aes(x=AvgNDVI$AvgNDVI_Month,y=AvgNDVI$AvgNDVI_RANGE,color=AvgNDVI$NAME))+
+  geom_line()+
+  xlab("Month") + ylab("Range Average NDVI") 
+p1 + scale_color_discrete(name="Communal land")
+```
