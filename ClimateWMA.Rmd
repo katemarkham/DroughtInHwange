@@ -11,34 +11,179 @@ library(tidyverse)
 library(data.table)
 library(readr)
 library(ggplot2)
+library(gridExtra)
 ```
-
+Import all of the communal lands data and make Year and Month factors rather than numeric.
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-
 #Import data
 LST_2015_16_WMA <- read_csv("LST_2015_16_WMA.csv")
+LST_2015_16_WMA$LST_Year<-factor(LST_2015_16_WMA$LST_Year)
+LST_2015_16_WMA$LST_Month<-factor(LST_2015_16_WMA$LST_Month)
 LST<-LST_2015_16_WMA %>% 
   select(NAME, LST_MIN, LST_MAX, LST_RANGE, LST_MEAN,LST_STD, LST_MEDIAN, LST_PCT90, LST_Month, LST_Year)
-as.factor(LST$LST_Year)
-as.factor(LST$LST_Month)
-AvgNDVI_2015_16_WMA <- read_csv("AvgNDVI_2015_16_WMA.csv")
-AvgNDVI<-AvgNDVI_2015_16_WMA 
-as.factor(AvgNDVI$AvgNDVI_Year)
-as.factor(AvgNDVI$AvgNDVI_Month)
-Precip_2015_16_WMA <- read_csv("Precip_2015_16_WMA.csv",show_col_types = FALSE)
-Precip<-Precip_2015_16_WMA 
-as.factor(Precip$PRECIP_Month) 
-as.factor(Precip$PRECIP_Year)
-Soil_10_to_40_tavg_WMA <- read_csv("Soil_10_to_40_tavg_WMA.csv",show_col_types = FALSE)
-Soil1040<-Soil_10_to_40_tavg_WMA 
-as.factor(Soil1040$Soil_10_40_Year) 
-as.factor(Soil1040$Soil_10_40_Month)
-```
 
+AvgNDVI_2015_16_WMA <- read_csv("AvgNDVI_2015_16_WMA.csv")
+AvgNDVI_2015_16_WMA$AvgNDVI_Year<-factor(AvgNDVI_2015_16_WMA$AvgNDVI_Year)
+AvgNDVI_2015_16_WMA$AvgNDVI_Month<-factor(AvgNDVI_2015_16_WMA$AvgNDVI_Month)
+AvgNDVI<-AvgNDVI_2015_16_WMA 
+
+Precip_2015_16_WMA <- read_csv("Precip_2015_16_WMA.csv")
+Precip_2015_16_WMA$PRECIP_Year<-factor(Precip_2015_16_WMA$PRECIP_Year)
+Precip_2015_16_WMA$PRECIP_Month<-factor(Precip_2015_16_WMA$PRECIP_Month)
+Precip<-Precip_2015_16_WMA 
+  
+Soil_10_to_40_tavg_WMA <- read_csv("Soil_10_to_40_tavg_WMA.csv")
+Soil_10_to_40_tavg_WMA$Soil_10_40_Year<-factor(Soil_10_to_40_tavg_WMA$Soil_10_40_Year)
+Soil_10_to_40_tavg_WMA$Soil_10_40_Month<-factor(Soil_10_to_40_tavg_WMA$Soil_10_40_Month)
+Soil1040<-Soil_10_to_40_tavg_WMA 
+```
+Plot LST
 ```{r}
 
-p1<-ggplot(AvgNDVI,aes(x=AvgNDVI$AvgNDVI_Month,y=AvgNDVI$AvgNDVI_RANGE,color=AvgNDVI$NAME))+
-  geom_line()+
-  xlab("Month") + ylab("Range Average NDVI") 
-p1 + scale_color_discrete(name="Communal land")
+ggplot(LST,aes(x=LST_Month,y=LST_MEDIAN))+
+  geom_boxplot() + ggtitle("Median LST in communal lands")+ 
+  xlab("Month") + ylab("LST (K)") +
+  facet_wrap(~LST_Year)
+```
+
+
+Plot precip by year in all communal lands
+```{r}
+
+ggplot(Precip,aes(x=PRECIP_Month,y=PRECIP_MEDIAN))+
+  geom_boxplot() + ggtitle("Median precipitation in communal lands")+ 
+  xlab("Month") + ylab("Precipitation (mm/month)") +
+  facet_wrap(~PRECIP_Year)
+```
+
+Soil moisture 10 to 40 cm by year in all communal lands
+```{r}
+
+ggplot(Soil1040,aes(x=Soil_10_40_Month,y=Soil_10_40_MEDIAN))+
+  geom_boxplot() + ggtitle("Median soil moisture (10 to 40 cm depth) in communal lands")+ 
+  xlab("Month") + ylab("Soil moisture (m3/m3)") +
+  facet_wrap(~Soil_10_40_Year)
+
+```
+
+NDVI by year in all communal lands
+```{r}
+
+ggplot(AvgNDVI,aes(x=AvgNDVI_Month,y=AvgNDVI_MEDIAN))+
+  geom_boxplot() + ggtitle("Median NDVI in communal lands")+ 
+  xlab("Month") + ylab("Median NDVI (1-200)") +
+  facet_wrap(~AvgNDVI_Year)
+
+```
+
+Crop raiding months only
+LST
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+LST_CR<-LST%>% 
+  filter(LST_Month%in% c(3, 4, 5))
+
+CR_LST_Plot<-ggplot(LST_CR,aes(x=LST_Month,y=LST_MEDIAN, color=NAME))+
+  geom_point() + ggtitle("Median LST in communal lands during crop raiding season")+ 
+  xlab("Month") + ylab("LST (K)") +
+  facet_wrap(~LST_Year)
+CR_LST_Plot1<-CR_LST_Plot + scale_color_discrete(name="Communal land")
+CR_LST_Plot
+```
+
+Precipitation
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+Precip_CR<-Precip %>% 
+  filter(PRECIP_Month%in% c(3, 4, 5))
+
+CR_Precip<-ggplot(Precip_CR,aes(x=PRECIP_Month,y=PRECIP_MEDIAN, color=NAME))+
+  geom_point() + ggtitle("Median precipitation in communal lands during crop raiding season")+ 
+  xlab("Month") + ylab("Precipitation (mm/month)") +
+  facet_wrap(~PRECIP_Year)
+CR_Precip1<-CR_Precip + scale_color_discrete(name="Communal land")
+CR_Precip1
+```
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Soil Moisture Plots for crop raiding period 
+#Maximum NDVI
+Soil1040_CR<-Soil1040 %>% 
+  filter(Soil_10_40_Month %in% c(3, 4, 5))
+p1<-ggplot(Soil1040_CR,aes(x=Soil_10_40_Month,y=Soil_10_40_MEDIAN,color=NAME))+
+  geom_point()+
+  xlab("Month") + ylab("Median Soil Moisture (m3/m3)") +ggtitle("Median soil mosture in communal lands during crop raiding season") +
+  facet_wrap(~Soil_10_40_Year)
+p1<-p1 + scale_color_discrete(name="Communal land")
+p1
+
+```
+
+
+
+
+NDVI
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#NDVI Plots for crop raiding period 
+#Maximum NDVI
+AvgNDVI_CR<-AvgNDVI %>% 
+  filter(AvgNDVI_Month %in% c(3, 4, 5))
+p1<-ggplot(AvgNDVI_CR,aes(x=AvgNDVI_Month,y=AvgNDVI_MEDIAN,color=NAME))+
+  geom_point()+
+  xlab("Month") + ylab("Median NDVI (1-200)") +ggtitle("Median NDVI in communal lands by during crop raiding season") +
+  facet_wrap(~AvgNDVI_Year)
+p1<-p1 + scale_color_discrete(name="Communal land")
+p1
+
+```
+
+
+Land Cover Analysis
+Data import
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+LC_LST <- read_csv("LC_LST.csv")
+LC_LST$LST_Year<-factor(LC_LST$LST_Year)
+LC_LST$LST_Month<-factor(LC_LST$LST_Month)
+LC_Precip <- read_delim("LC_Precip.csv", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+LC_Precip$Precip_Year<-factor(LC_Precip$Precip_Year)
+LC_Precip$Precip_Month<-factor(LC_Precip$Precip_Month)
+LC_AvgNDVI <- read_delim("LC_AvgNDVI.csv", 
+     delim = "\t", escape_double = FALSE, 
+     trim_ws = TRUE)
+LC_AvgNDVI$LC_Year<-factor(LC_AvgNDVI$LC_Year)
+LC_AvgNDVI$LC_Month<-factor(LC_AvgNDVI$LC_Month)
+```
+
+
+LST all land cover types
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+ggplot(LC_LST,aes(x=LST_Month,y=LST_MEDIAN))+
+  geom_boxplot() + ggtitle("Median LST in different land cover types")+ 
+  xlab("Month") + ylab("LST (K)") +
+  facet_wrap(~LST_Year)
+
+LST_LC_Plot<-ggplot(LC_LST,aes(x=LST_Month,y=LST_MEDIAN, color=LC))+
+  geom_point() + ggtitle("Median LST by Land Cover")+ 
+  xlab("Month") + ylab("LST (K)") +
+  facet_wrap(~LST_Year)
+LST_LC_Plot1<-LST_LC_Plot + scale_color_discrete(name="LC")
+LST_LC_Plot1
+```
+
+Precip all land cover types
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+ggplot(LC_Precip,aes(x=Precip_Month,y=Precip_MEDIAN))+
+  geom_boxplot() + ggtitle("Median Precip in different land cover types")+ 
+  xlab("Month") + ylab("Precip") +
+  facet_wrap(~Precip_Year)
+
+Precip_LC_Plot<-ggplot(LC_Precip,aes(x=Precip_Month,y=Precip_MEDIAN, color=LC))+
+  geom_point() + ggtitle("Median Precipitation by Land Cover")+ 
+  xlab("Month") + ylab("Precip") +
+  facet_wrap(~Precip_Year)
+Precip_LC_Plot1<-Precip_LC_Plot + scale_color_discrete(name="LC")
+Precip_LC_Plot1
 ```
