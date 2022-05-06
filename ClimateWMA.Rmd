@@ -12,6 +12,12 @@ library(data.table)
 library(readr)
 library(ggplot2)
 library(gridExtra)
+library(car)
+library(stargazer)
+library(tmap)
+library(lmtest)
+library(sf)
+library(Hmisc)
 ```
 Import all of the communal lands data and make Year and Month factors rather than numeric.
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
@@ -131,11 +137,16 @@ AvgNDVI_CR<-AvgNDVI %>%
   filter(AvgNDVI_Month %in% c(3, 4, 5))
 p1<-ggplot(AvgNDVI_CR,aes(x=AvgNDVI_Month,y=AvgNDVI_MEDIAN,color=NAME))+
   geom_point()+
-  xlab("Month") + ylab("Median NDVI (1-200)") +ggtitle("Median NDVI in communal lands by during crop raiding season") +
+  xlab("Month") + ylab("Median NDVI (0-200)") +ggtitle("Median NDVI in communal lands during crop raiding season") +
   facet_wrap(~AvgNDVI_Year)
 p1<-p1 + scale_color_discrete(name="Communal land")
 p1
-
+```
+Test for normality
+Shapiro test: if p<0.01, data is not normally distributed.
+```{r}
+shapiro.test(AvgNDVI$AvgNDVI_MEDIAN) 
+qqnorm(AvgNDVI$AvgNDVI_MEDIAN); qqline(AvgNDVI$AvgNDVI_MEDIAN)
 ```
 
 
@@ -150,11 +161,12 @@ LC_Precip <- read_delim("LC_Precip.csv",
     trim_ws = TRUE)
 LC_Precip$Precip_Year<-factor(LC_Precip$Precip_Year)
 LC_Precip$Precip_Month<-factor(LC_Precip$Precip_Month)
-LC_AvgNDVI <- read_delim("LC_AvgNDVI.csv", 
-     delim = "\t", escape_double = FALSE, 
-     trim_ws = TRUE)
-LC_AvgNDVI$LC_Year<-factor(LC_AvgNDVI$LC_Year)
-LC_AvgNDVI$LC_Month<-factor(LC_AvgNDVI$LC_Month)
+LC_Soil<-LC_Soil1040 <- read_csv("LC_Soil1040.csv")
+LC_Soil$Soil_Year<-factor(LC_Soil$Soil_Year)
+LC_Soil$Soil_Month<-factor(LC_Soil$Soil_Month)
+LC_AvgNDVI <- read_csv("LC_AvgNDVI.csv")
+LC_AvgNDVI$NDVI_Year<-factor(LC_AvgNDVI$NDVI_Year)
+LC_AvgNDVI$NDVI_Month<-factor(LC_AvgNDVI$NDVI_Month)
 ```
 
 
@@ -187,3 +199,51 @@ Precip_LC_Plot<-ggplot(LC_Precip,aes(x=Precip_Month,y=Precip_MEDIAN, color=LC))+
 Precip_LC_Plot1<-Precip_LC_Plot + scale_color_discrete(name="LC")
 Precip_LC_Plot1
 ```
+NDVI for all land cover types
+
+NDVI all land cover types
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+ggplot(LC_AvgNDVI,aes(x=NDVI_Month,y=NDVI_MEDIAN))+
+  geom_boxplot() + ggtitle("Median NDVI in different land cover types")+ 
+  xlab("Month") + ylab("NDVI") +
+  facet_wrap(~NDVI_Year)
+
+LC_AvgNDVI_Plot<-ggplot(LC_AvgNDVI,aes(x=NDVI_Month,y=NDVI_MEDIAN, color=LC))+
+  geom_point() + ggtitle("Median NDVI by Land Cover")+ 
+  xlab("Month") + ylab("NDVI (0-200)") +
+  facet_wrap(~NDVI_Year)
+LC_AvgNDVI_Plot1<-LC_AvgNDVI_Plot + scale_color_discrete(name="LC")
+LC_AvgNDVI_Plot1
+```
+```{r}
+ggplot(LC_Soil,aes(x=Soil_Month,y=Soil_MEDIAN))+
+  geom_boxplot() + ggtitle("Median Soil Moisture in different land cover types")+ 
+  xlab("Month") + ylab("Soil Moisture") +
+  facet_wrap(~Soil_Year)
+
+LC_Soil_Plot<-ggplot(LC_Soil,aes(x=Soil_Month,y=Soil_MEDIAN, color=LC))+
+  geom_point() + ggtitle("Median Soil Moisture by Land Cover")+ 
+  xlab("Month") + ylab("Soil Moisture") +
+  facet_wrap(~Soil_Year)
+LC_Soil_Plot1<-LC_Soil_Plot + scale_color_discrete(name="LC")
+LC_Soil_Plot1
+```
+
+
+Test for normality
+Shapiro test: if p<0.01, data is not normally distributed.
+```{r}
+shapiro.test(LC_AvgNDVI$NDVI_MEDIAN) 
+qqnorm(LC_AvgNDVI$NDVI_MEDIAN); qqline(LC_AvgNDVI$NDVI_MEDIAN)
+
+shapiro.test(LC_Precip$Precip_MEDIAN) 
+qqnorm(LC_Precip$Precip_MEDIAN); qqline(LC_Precip$Precip_MEDIAN)
+
+shapiro.test(LC_Soil$Soil_MEDIAN) 
+qqnorm(LC_Soil$Soil_MEDIAN); qqline(LC_Soil$Soil_MEDIAN)
+
+shapiro.test(LC_LST$LST_MEDIAN) 
+qqnorm(LC_LST$LST_MEDIAN); qqline(LC_LST$LST_MEDIAN)
+```
+Data is not normally distributed.
+
