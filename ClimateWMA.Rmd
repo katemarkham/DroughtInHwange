@@ -19,6 +19,8 @@ library(lmtest)
 library(sf)
 library(Hmisc)
 ```
+
+
 Import all of the communal lands data and make Year and Month factors rather than numeric.
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 #Import data
@@ -43,6 +45,8 @@ WMA_Soil$Year<-factor(WMA_Soil$Year)
 WMA_Soil$Month<-factor(WMA_Soil$Month)
 Soil<-WMA_Soil
 ```
+
+
 Plot LST
 ```{r}
 
@@ -213,7 +217,9 @@ LC_NDVI_Plot<-ggplot(LC_NDVI,aes(x=Month,y=MEDIAN, color=LC))+
 LC_NDVI_Plot1<-LC_NDVI_Plot + scale_color_discrete(name="LC")
 LC_NDVI_Plot1
 ```
-NDVI
+
+
+Median NDVI CR by LC
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 #NDVI Plots for crop raiding period 
 #Maximum NDVI
@@ -226,7 +232,19 @@ p1<-ggplot(LCNDVI_CR,aes(x=Month,y=MEDIAN,color=LC))+
 p1<-p1 + scale_color_discrete(name="Land cover type")
 p1
 ```
-
+NDVI
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#NDVI Plots for crop raiding period 
+#Maximum NDVI
+LCNDVI_CR<-LC_NDVI %>% 
+  filter(Month%in% c("03", "04", "05"))
+p1<-ggplot(LCNDVI_CR,aes(x=Month,y=PCT90,color=LC))+
+  geom_point()+
+  xlab("Month") + ylab("90th Percentile NDVI (0-200)") +ggtitle("90th Percentile NDVI during crop raiding season by land cover") +
+  facet_wrap(~Year)
+p1<-p1 + scale_color_discrete(name="Land cover type")
+p1
+```
 
 ```{r}
 ggplot(LC_Soil,aes(x=Month,y=MEDIAN))+
@@ -263,17 +281,17 @@ Data is not normally distributed.
 Test for normality
 Shapiro test: if p<0.01, data is not normally distributed.
 ```{r}
-shapiro.test(LC_NDVI$MIN) 
-qqnorm(LC_NDVI$MIN); qqline(LC_NDVI$MIN)
+shapiro.test(LC_NDVI$PCT90) 
+qqnorm(LC_NDVI$MIN); qqline(LC_NDVI$PCT90)
 
-shapiro.test(LC_Precip$MIN) 
-qqnorm(LC_Precip$MIN); qqline(LC_Precip$MIN)
+shapiro.test(LC_Precip$PCT90) 
+qqnorm(LC_Precip$PCT90); qqline(LC_Precip$PCT90)
 
-shapiro.test(LC_Soil$MIN) 
-qqnorm(LC_Soil$MIN); qqline(LC_Soil$MIN)
+shapiro.test(LC_Soil$PCT90) 
+qqnorm(LC_Soil$PCT90); qqline(LC_Soil$PCT90)
 
-shapiro.test(LC_LST$MIN) 
-qqnorm(LC_LST$MIN); qqline(LC_LST$MIN)
+shapiro.test(LC_LST$PCT90) 
+qqnorm(LC_LST$PCT90); qqline(LC_LST$PCT90)
 ```
 Test for normality
 Shapiro test: if p<0.01, data is not normally distributed.
