@@ -18,6 +18,7 @@ library(tmap)
 library(lmtest)
 library(sf)
 library(Hmisc)
+library(rcompanion)
 ```
 
 
@@ -74,6 +75,16 @@ ggplot(Soil,aes(x=Month,y=MEDIAN))+
   xlab("Month") + ylab("Soil moisture (m3/m3)") +
   facet_wrap(~Year)
 
+ggplot(Soil,aes(x=Month,y=RANGE))+
+  geom_boxplot() + ggtitle("Soil moisture (10 to 40 cm depth) range in communal lands")+ 
+  xlab("Month") + ylab("Soil moisture (m3/m3)") +
+  facet_wrap(~Year)
+
+ggplot(Soil,aes(x=Month,y=MAX))+
+  geom_boxplot() + ggtitle("Maximum soil moisture (10 to 40 cm depth) in communal lands")+ 
+  xlab("Month") + ylab("Soil moisture (m3/m3)") +
+  facet_wrap(~Year)
+
 ```
 
 NDVI by year in all communal lands
@@ -84,6 +95,11 @@ ggplot(NDVI,aes(x=Month,y=MEDIAN))+
   xlab("Month") + ylab("Median NDVI (1-200)") +
   facet_wrap(~Year)
 
+
+ggplot(NDVI,aes(x=Month,y=RANGE))+
+  geom_boxplot() + ggtitle("NDVI Range in communal lands")+ 
+  xlab("Month") + ylab("NDVI Range (1-200)") +
+  facet_wrap(~Year)
 ```
 
 Crop raiding months only
@@ -282,7 +298,7 @@ Test for normality
 Shapiro test: if p<0.01, data is not normally distributed.
 ```{r}
 shapiro.test(LC_NDVI$PCT90) 
-qqnorm(LC_NDVI$MIN); qqline(LC_NDVI$PCT90)
+qqnorm(LC_NDVI$PCT90); qqline(LC_NDVI$PCT90)
 
 shapiro.test(LC_Precip$PCT90) 
 qqnorm(LC_Precip$PCT90); qqline(LC_Precip$PCT90)
@@ -296,25 +312,83 @@ qqnorm(LC_LST$PCT90); qqline(LC_LST$PCT90)
 Test for normality
 Shapiro test: if p<0.01, data is not normally distributed.
 ```{r}
-shapiro.test(LC_NDVI$PCT90) 
-qqnorm(LC_NDVI$PCT90); qqline(LC_NDVI$PCT90)
+shapiro.test(LC_NDVI$RANGE) 
+qqnorm(LC_NDVI$RANGE); qqline(LC_NDVI$RANGE)
 
-shapiro.test(LC_Precip$PCT90) 
-qqnorm(LC_Precip$PCT90); qqline(LC_Precip$PCT90)
+shapiro.test(LC_Precip$RANGE) 
+qqnorm(LC_Precip$RANGE); qqline(LC_Precip$RANGE)
 
-shapiro.test(LC_Soil$PCT90) 
-qqnorm(LC_Soil$PCT90); qqline(LC_Soil$PCT90)
+shapiro.test(LC_Soil$RANGE) 
+qqnorm(LC_Soil$RANGE); qqline(LC_Soil$RANGE)
 
-shapiro.test(LC_LST$PCT90) 
-qqnorm(LC_LST$PCT90); qqline(LC_LST$PCT90)
+shapiro.test(LC_LST$RANGE) 
+qqnorm(LC_LST$RANGE); qqline(LC_LST$RANGE)
 ```
-
+Test for correlation with variables of interest and area to check that there is nothing weird happening with large pixel size
 ```{r}
 cor(LC_Soil$MEDIAN, LC_Soil$AREA)
 cor(LC_NDVI$MEDIAN,LC_NDVI$AREA)
 cor(LC_Precip$MEDIAN,LC_Precip$AREA)
+cor(LC_LST$MEDIAN,LC_LST$AREA)
 
-LCdf<-(LC_Precip$MEDIAN, LC_Precip$PCT90, LC_Precip$Year, LC_Precip$Month)
+cor(LC_Soil$MAX, LC_Soil$AREA)
+cor(LC_NDVI$MAX,LC_NDVI$AREA)
+cor(LC_Precip$MAX,LC_Precip$AREA)
+cor(LC_LST$MAX,LC_LST$AREA)
 
+cor(LC_Soil$RANGE, LC_Soil$AREA)
+cor(LC_NDVI$RANGE,LC_NDVI$AREA)
+cor(LC_Precip$RANGE,LC_Precip$AREA)
+cor(LC_LST$RANGE,LC_LST$AREA)
+```
+Test and plots for differences in WMA
+```{r}
+
+
+kruskal.test(MEDIAN ~ NAME, data = WMA_NDVI) 
+epsilonSquared(x = WMA_NDVI$MEDIAN, g = WMA_NDVI$NAME)
+kruskal.test(RANGE ~ NAME, data = WMA_NDVI) 
+kruskal.test(MAX ~ NAME, data = WMA_NDVI) 
+
+ggplot(WMA_NDVI,aes(x=NAME,y=RANGE))+
+  geom_boxplot() + ggtitle("NDVI (0-200) range in communal lands")+ 
+  xlab("Communal land") + ylab("NDVI") +
+  facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+Tests and plots for precip and LST by communal land
+```{r}
+kruskal.test(MEDIAN ~ NAME, data = WMA_Precip) 
+kruskal.test(RANGE ~ NAME, data = WMA_Precip) 
+kruskal.test(MAX ~ NAME, data = WMA_Precip) 
+
+kruskal.test(MEDIAN ~ NAME, data = WMA_LST) 
+kruskal.test(RANGE ~ NAME, data = WMA_LST) 
+kruskal.test(MAX ~ NAME, data = WMA_LST) 
+```
+
+
+Tests and plots for soil distribution by communal land
+```{r}
+
+kruskal.test(MEDIAN ~ NAME, data = WMA_Soil) 
+kruskal.test(RANGE ~ NAME, data = WMA_Soil) 
+kruskal.test(MAX ~ NAME, data = WMA_Soil) 
+
+ggplot(WMA_Soil,aes(x=NAME,y=MEDIAN))+
+  geom_boxplot() + ggtitle("Median soil moisture (10 to 40 cm depth) in communal lands")+ 
+  xlab("Communal land") + ylab("Soil moisture (m3/m3)") +
+  facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(WMA_Soil,aes(x=NAME,y=RANGE))+
+  geom_boxplot() + ggtitle("Soil moisture (10 to 40 cm depth) range in communal lands")+ 
+  xlab("Communal land") + ylab("Soil moisture (m3/m3)") +
+  facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(WMA_Soil,aes(x=NAME,y=MAX))+
+  geom_boxplot() + ggtitle("Maximum soil moisture (10 to 40 cm depth) in communal lands")+ 
+  xlab("Communal land") + ylab("Soil moisture (m3/m3)") +
+  facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
