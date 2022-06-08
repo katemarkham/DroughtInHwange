@@ -1,10 +1,23 @@
 ---
 title: "ClimateWMA"
 author: "KateMarkham"
-date: "04/26/2022"
-output: html_document
+date: "06/08/2022"
+output:
+  html_document: default
 ---
+This script plots climatic and environmental variables for Hwange District in Zimbabwe.  Data is then plotted, correlation is checked, and tests for normality are done. To date, data has not fit normal distribution. Thus, the Kruskal-Wallis test is used to determine differences. Following any statistically significant differences, the Dunn's Kruskal-Wallis multiple comparisons is to identify directional differences and if they are significant. 
 
+This script was designed to take csv files as inputs. Each csv file contains measures of central tendency by month of for either land cover type or by communal area. Climatic and environmental variables included are LST, soil moisture, precipitation, and NDVI. Separate inputs are needed for each environmental variable (LST, NDVI, etc.) and for communal land versus land cover type.
+
+Part I examines climatic and environmental variables by communal lands (also called wildlife management areas).
+Part II examines the same as above but for the crop raiding season only (March, April, and May).
+Part III examines variables by land cover type.
+Part IV examines the same as above but for the crop raiding season only.
+
+
+
+
+Load packages needed
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 library(knitr)
 library(tidyverse)
@@ -18,9 +31,10 @@ library(tmap)
 library(lmtest)
 library(sf)
 library(Hmisc)
-library(rcompanion)
+library(FSA)
 ```
 
+***I. Communal lands-all months***
 
 Import all of the communal lands data and make Year and Month factors rather than numeric.
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
@@ -48,7 +62,7 @@ Soil<-WMA_Soil
 ```
 
 
-Plot LST
+Plot LST in communal lands
 ```{r}
 
 ggplot(LST,aes(x=Month,y=MEDIAN))+
@@ -102,93 +116,173 @@ ggplot(NDVI,aes(x=Month,y=RANGE))+
   facet_wrap(~Year)
 ```
 
-Crop raiding months only
-LST
-```{r echo=TRUE, message=FALSE, warning=FALSE}
-
-LST_CR<-LST%>% 
-  filter(Month%in% c("03", "04", "05"))
-
-CR_LST_Plot<-ggplot(LST_CR,aes(x=Month,y=MEDIAN, color=NAME))+
-  geom_point() + ggtitle("Median LST in communal lands during crop raiding season")+ 
-  xlab("Month") + ylab("LST (K)") +
-  facet_wrap(~Year)
-CR_LST_Plot1<-CR_LST_Plot + scale_color_discrete(name="Communal land")
-CR_LST_Plot
-```
-
-Precipitation
-```{r echo=TRUE, message=FALSE, warning=FALSE}
-
-Precip_CR<-Precip %>% 
-  filter(Month%in% c("03", "04", "05"))
-
-CR_Precip<-ggplot(Precip_CR,aes(x=Month,y=MEDIAN, color=NAME))+
-  geom_point() + ggtitle("Median precipitation in communal lands during crop raiding season")+ 
-  xlab("Month") + ylab("Precipitation (mm/month)") +
-  facet_wrap(~Year)
-CR_Precip1<-CR_Precip + scale_color_discrete(name="Communal land")
-CR_Precip1
-```
 
 
-```{r echo=TRUE, message=FALSE, warning=FALSE}
-#Soil Moisture Plots for crop raiding period 
-#Maximum NDVI
-Soil_CR<-Soil %>% 
-  filter(Month %in% c(3, 4, 5))
-p1<-ggplot(Soil_CR,aes(x=Month,y=MEDIAN,color=NAME))+
-  geom_point()+
-  xlab("Month") + ylab("Median Soil Moisture (m3/m3)") +ggtitle("Median soil mosture in communal lands during crop raiding season") +
-  facet_wrap(~Year)
-p1<-p1 + scale_color_discrete(name="Communal land")
-p1
-
-```
-
-
-
-
-NDVI
-```{r echo=TRUE, message=FALSE, warning=FALSE}
-#NDVI Plots for crop raiding period 
-#Maximum NDVI
-NDVI_CR<-NDVI %>% 
-  filter(Month%in% c("03", "04", "05"))
-p1<-ggplot(NDVI_CR,aes(x=Month,y=MEDIAN,color=NAME))+
-  geom_point()+
-  xlab("Month") + ylab("Median NDVI (0-200)") +ggtitle("Median NDVI in communal lands during crop raiding season") +
-  facet_wrap(~Year)
-p1<-p1 + scale_color_discrete(name="Communal land")
-p1
-```
 Test for normality
 Shapiro test: if p<0.01, data is not normally distributed.
 ```{r}
 shapiro.test(NDVI$MEDIAN) 
 qqnorm(NDVI$MEDIAN); qqline(NDVI$MEDIAN)
 ```
+Test and plot differences in NDVI by WMA
+```{r warning=FALSE}
+
+##only data for which we have CR reports:
+#WMA_NDVI<- WMA_NDVI %>%
+#  filter(NAME%in% c("Chidobe", "Jambezi", "Kachecheti","Nemananga"))
+kruskal.test(MEDIAN ~ NAME, data = WMA_NDVI) 
+kruskal.test(RANGE ~ NAME, data = WMA_NDVI) 
+dunnTestWMA_NDVIRANGE<-dunnTest(RANGE ~ NAME, data = WMA_NDVI, method = "bh",list=TRUE)
+dunnTestWMA_NDVIRANGE
+
+kruskal.test(MAX ~ NAME, data = WMA_NDVI) 
+
+ggplot(WMA_NDVI,aes(x=NAME,y=MEDIAN))+
+  geom_boxplot() + ggtitle("NDVI (0-200) in communal lands")+ 
+  xlab("Communal land") + ylab("NDVI") +
+  facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+Tests and plots for precip and LST by communal land
+```{r}
+kruskal.test(MEDIAN ~ NAME, data = WMA_Precip) 
+kruskal.test(RANGE ~ NAME, data = WMA_Precip) 
+kruskal.test(MAX ~ NAME, data = WMA_Precip) 
+
+kruskal.test(MEDIAN ~ NAME, data = WMA_LST) 
+kruskal.test(RANGE ~ NAME, data = WMA_LST) 
+kruskal.test(MAX ~ NAME, data = WMA_LST) 
+```
 
 
-Land Cover Analysis
-Data import
+Tests and plots for soil moisture distribution by communal land
+```{r}
+
+kruskal.test(MEDIAN ~ NAME, data = WMA_Soil) 
+dunnTestWMA_SoilMEDIAN<-dunnTest(MEDIAN ~ NAME, data = WMA_Soil, method = "bh",list=TRUE)
+dunnTestWMA_SoilMEDIAN
+kruskal.test(RANGE ~ NAME, data = WMA_Soil) 
+kruskal.test(MAX ~ NAME, data = WMA_Soil) 
+
+ggplot(WMA_Soil,aes(x=NAME,y=MEDIAN))+
+  geom_boxplot() + ggtitle("Median soil moisture (10 to 40 cm depth) in communal lands")+ 
+  xlab("Communal land") + ylab("Soil moisture (m3/m3)") +
+  facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(WMA_Soil,aes(x=NAME,y=RANGE))+
+  geom_boxplot() + ggtitle("Soil moisture (10 to 40 cm depth) range in communal lands")+ 
+  xlab("Communal land") + ylab("Soil moisture (m3/m3)") +
+  facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(WMA_Soil,aes(x=NAME,y=MAX))+
+  geom_boxplot() + ggtitle("Maximum soil moisture (10 to 40 cm depth) in communal lands")+ 
+  xlab("Communal land") + ylab("Soil moisture (m3/m3)") +
+  facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+******II. Communal lands-crop raiding only******
+
+
+Crop raiding months only
+LST WMA
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+WMA_LST_CR<-WMA_LST%>% 
+  filter(Month%in% c("03", "04", "05")) %>%
+  filter(NAME%in% c("Chidobe", "Jambezi", "Kachecheti","Nemananga"))
+
+WMA_CR_LST_Plot<-ggplot(WMA_LST_CR,aes(x=Month,y=MEDIAN, color=NAME))+
+  geom_point() + ggtitle("Median LST in communal lands during crop raiding season")+ 
+  xlab("Month") + ylab("LST (K)") +
+  facet_wrap(~Year)
+WMA_CR_LST_Plot1<-WMA_CR_LST_Plot + scale_color_discrete(name="Communal land")
+WMA_CR_LST_Plot
+```
+
+Precipitation three months prior to CR period due to assumed lag WMA
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+WMA_Precip_CR<-WMA_Precip %>% 
+  filter(Month%in% c("12", "01", "02"))
+
+WMA_CR_Precip<-ggplot(WMA_Precip_CR,aes(x=Month,y=MEDIAN, color=NAME))+
+  geom_point() + ggtitle("Median precipitation in communal lands during crop raiding season")+ 
+  xlab("Month") + ylab("Precipitation (mm/month)") +
+  facet_wrap(~Year)
+WMA_CR_Precip1<-WMA_CR_Precip + scale_color_discrete(name="Communal land")
+WMA_CR_Precip1
+```
+
+Soil moisture WMA crop raiding period
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Soil Moisture Plots for crop raiding period 
+#Median NDVI
+WMA_Soil_CR<-WMA_Soil %>% 
+  filter(Month %in% c(3, 4, 5)) %>%
+  filter(NAME%in% c("Chidobe", "Jambezi", "Kachecheti","Nemananga"))
+p1<-ggplot(WMA_Soil_CR,aes(x=Month,y=MEDIAN,color=NAME))+
+  geom_point()+
+  xlab("Month") + ylab("Median Soil Moisture (m3/m3)") +ggtitle("Median soil mosture in communal lands during crop raiding season") +
+  facet_wrap(~Year)
+p1<-p1 + scale_color_discrete(name="Communal land")
+p1
+
+
+kruskal.test(MEDIAN ~ NAME, data = WMA_Soil_CR) 
+dunnTestWMA_NDVI_CR<-dunnTest(MAX ~ NAME, data = WMA_Soil_CR, method = "bh",list=TRUE)
+```
+
+NDVI WMA CROP RAIDING PERIOD
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#NDVI Plots for crop raiding period 
+#MedianNDVI
+WMA_NDVI_CR<-WMA_NDVI %>% 
+  filter(Month%in% c("03", "04", "05")) %>%
+  filter(NAME%in% c("Chidobe", "Jambezi", "Kachecheti","Nemananga"))
+p1<-ggplot(WMA_NDVI_CR,aes(x=Month,y=MEDIAN,color=NAME))+
+  geom_point()+
+  xlab("Month") + ylab("Median NDVI (0-200)") +ggtitle("Median NDVI in communal lands during crop raiding season") +
+  facet_wrap(~Year)
+p1<-p1 + scale_color_discrete(name="Communal land")
+p1
+
+kruskal.test(STD ~ NAME, data = WMA_NDVI_CR) 
+dunnTestWMA_NDVI_CR<-dunnTest(STD ~ NAME, data = WMA_NDVI_CR, method = "bh",list=TRUE)
+dunnTestWMA_NDVI_CR
+```
+
+
+***III. Land Cover Analysis-all months***
+Import data for land cover
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 LC_LST <- read_csv("LC_LST.csv")
 LC_LST$Year<-factor(LC_LST$Year)
 LC_LST$Month<-factor(LC_LST$Month)
+LC_LST<-LC_LST %>% 
+  filter(LC %in% c("ag", "forest", "grassland","shrubland"))
+
 LC_Precip <- read_csv("LC_Precip.csv")
 LC_Precip$Year<-factor(LC_Precip$Year)
 LC_Precip$Month<-factor(LC_Precip$Month)
+LC_Precip <-LC_Precip %>% 
+  filter(LC %in% c("ag", "forest", "grassland","shrubland"))
+
 LC_Soil<-LC_Soil <- read_csv("LC_Soil.csv")
 LC_Soil$Year<-factor(LC_Soil$Year)
 LC_Soil$Month<-factor(LC_Soil$Month)
+LC_Soil<-LC_Soil %>% 
+  filter(LC %in% c("ag", "forest", "grassland","shrubland"))
+
 LC_NDVI <- read_csv("LC_NDVI.csv")
 LC_NDVI$Year<-factor(LC_NDVI$Year)
 LC_NDVI$Month<-factor(LC_NDVI$Month)
+LC_NDVI<-LC_NDVI %>% 
+  filter(LC %in% c("ag", "forest", "grassland","shrubland"))
 ```
 
 
-LST all land cover types
+LST 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 ggplot(LC_LST,aes(x=Month,y=MEDIAN))+
   geom_boxplot() + ggtitle("Median LST in different land cover types")+ 
@@ -203,23 +297,23 @@ LST_LC_Plot1<-LST_LC_Plot + scale_color_discrete(name="LC")
 LST_LC_Plot1
 ```
 
-Precip all land cover types
+Precip 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 ggplot(LC_Precip,aes(x=Month,y=MEDIAN))+
   geom_boxplot() + ggtitle("Median Precip in different land cover types")+ 
-  xlab("Month") + ylab("Precip") +
+  xlab("Month") + ylab("Precipitation (mm)") +
   facet_wrap(~Year)
 
 Precip_LC_Plot<-ggplot(LC_Precip,aes(x=Month,y=MEDIAN, color=LC))+
   geom_point() + ggtitle("Median Precipitation by Land Cover")+ 
-  xlab("Month") + ylab("Precip") +
+  xlab("Month") + ylab("Precipitation (mm)") +
   facet_wrap(~Year)
 Precip_LC_Plot1<-Precip_LC_Plot + scale_color_discrete(name="LC")
 Precip_LC_Plot1
 ```
-NDVI for all land cover types
 
-NDVI all land cover types
+
+NDVI 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 ggplot(LC_NDVI,aes(x=Month,y=MEDIAN))+
   geom_boxplot() + ggtitle("Median NDVI in different land cover types")+ 
@@ -235,42 +329,17 @@ LC_NDVI_Plot1
 ```
 
 
-Median NDVI CR by LC
-```{r echo=TRUE, message=FALSE, warning=FALSE}
-#NDVI Plots for crop raiding period 
-#Maximum NDVI
-LCNDVI_CR<-LC_NDVI %>% 
-  filter(Month%in% c("03", "04", "05"))
-p1<-ggplot(LCNDVI_CR,aes(x=Month,y=MEDIAN,color=LC))+
-  geom_point()+
-  xlab("Month") + ylab("Median NDVI (0-200)") +ggtitle("Median NDVI during crop raiding season by land cover") +
-  facet_wrap(~Year)
-p1<-p1 + scale_color_discrete(name="Land cover type")
-p1
-```
-NDVI
-```{r echo=TRUE, message=FALSE, warning=FALSE}
-#NDVI Plots for crop raiding period 
-#Maximum NDVI
-LCNDVI_CR<-LC_NDVI %>% 
-  filter(Month%in% c("03", "04", "05"))
-p1<-ggplot(LCNDVI_CR,aes(x=Month,y=PCT90,color=LC))+
-  geom_point()+
-  xlab("Month") + ylab("90th Percentile NDVI (0-200)") +ggtitle("90th Percentile NDVI during crop raiding season by land cover") +
-  facet_wrap(~Year)
-p1<-p1 + scale_color_discrete(name="Land cover type")
-p1
-```
 
+Soil moisture
 ```{r}
 ggplot(LC_Soil,aes(x=Month,y=MEDIAN))+
   geom_boxplot() + ggtitle("Median Soil Moisture in different land cover types")+ 
-  xlab("Month") + ylab("Soil Moisture") +
+  xlab("Month") + ylab("Soil Moisture (m3/m3)") +
   facet_wrap(~Year)
 
 LC_Soil_Plot<-ggplot(LC_Soil,aes(x=Month,y=MEDIAN, color=LC))+
   geom_point() + ggtitle("Median Soil Moisture by Land Cover")+ 
-  xlab("Month") + ylab("Soil Moisture") +
+  xlab("Month") + ylab("Soil Moisture (m3/m3)") +
   facet_wrap(~Year)
 LC_Soil_Plot1<-LC_Soil_Plot + scale_color_discrete(name="LC")
 LC_Soil_Plot1
@@ -294,7 +363,7 @@ qqnorm(LC_LST$MEDIAN); qqline(LC_LST$MEDIAN)
 ```
 Data is not normally distributed.
 
-Test for normality
+
 Shapiro test: if p<0.01, data is not normally distributed.
 ```{r}
 shapiro.test(LC_NDVI$PCT90) 
@@ -309,7 +378,7 @@ qqnorm(LC_Soil$PCT90); qqline(LC_Soil$PCT90)
 shapiro.test(LC_LST$PCT90) 
 qqnorm(LC_LST$PCT90); qqline(LC_LST$PCT90)
 ```
-Test for normality
+
 Shapiro test: if p<0.01, data is not normally distributed.
 ```{r}
 shapiro.test(LC_NDVI$RANGE) 
@@ -341,54 +410,209 @@ cor(LC_NDVI$RANGE,LC_NDVI$AREA)
 cor(LC_Precip$RANGE,LC_Precip$AREA)
 cor(LC_LST$RANGE,LC_LST$AREA)
 ```
-Test and plots for differences in WMA
-```{r}
+
+**Statistics**
+```{r warning=FALSE}
+
+kruskal.test(MEDIAN ~ LC, data = LC_NDVI) 
+dunnTestLC_NDVIMEDIAN<-dunnTest(MEDIAN ~ LC, data = LC_NDVI, method = "bh",list=TRUE)
+dunnTestLC_NDVIMEDIAN
+kruskal.test(RANGE ~ LC, data = LC_NDVI) 
+dunnTestLC_NDVIRANGE<-dunnTest(RANGE ~ LC, data = LC_NDVI, method = "bh",list=TRUE)
+dunnTestLC_NDVIRANGE
+
+kruskal.test(MAX ~ LC, data = LC_NDVI) 
+dunnTestLC_NDVIMAX <-dunnTest(MAX ~ LC, data = LC_NDVI, method = "bh",list=TRUE)
+dunnTestLC_NDVIMAX 
+
+ggplot(LC_NDVI,aes(x=LC,y=MEDIAN))+
+  geom_boxplot() + ggtitle("Median NDVI (0-200) by land cover type")+ 
+  xlab("Land cover") + ylab("NDVI") +
+  facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(LC_NDVI,aes(x=LC,y=RANGE))+
+  geom_boxplot() + ggtitle("Range in NDVI (0-200) by land cover type")+ 
+  xlab("Land cover") + ylab("NDVI") +
+  facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+Precipitation
+```{r warning=FALSE}
+kruskal.test(MEDIAN ~ LC, data = LC_Precip) 
+dunnTestLC_PrecipMEDIAN<-dunnTest(MEDIAN ~ LC, data = LC_Precip, method = "bh",list=TRUE)
+dunnTestLC_PrecipMEDIAN
+kruskal.test(RANGE ~ LC, data = LC_Precip) 
+dunnTestLC_PrecipRANGE<-dunnTest(RANGE ~ LC, data = LC_Precip, method = "bh",list=TRUE)
+dunnTestLC_PrecipRANGE
+
+kruskal.test(MAX ~ LC, data = LC_Precip) 
+dunnTestLC_PrecipMAX<-dunnTest(MAX ~ LC, data = LC_Precip, method = "bh",list=TRUE)
+dunnTestLC_PrecipMAX
+
+ggplot(LC_Precip,aes(x=LC,y=MEDIAN))+
+  geom_boxplot() + ggtitle("Precipitation  by land cover type")+ 
+  xlab("Land cover") + ylab("Precipitation (mm)") +
+  facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(LC_Precip,aes(x=LC,y=RANGE))+
+  geom_boxplot() + ggtitle("Range in Precipitation by land cover type")+ 
+  xlab("Land cover") + ylab("Precipitation (mm)") +
+  facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+Soil moisture
+```{r warning=FALSE}
+kruskal.test(MEDIAN ~ LC, data = LC_Soil) 
+
+kruskal.test(RANGE ~ LC, data = LC_Soil) 
+dunnTestLC_SoilRANGE<-dunnTest(RANGE ~ LC, data = LC_Soil, method = "bh",list=TRUE)
+dunnTestLC_SoilRANGE
+
+kruskal.test(MAX ~ LC, data = LC_Soil) 
+dunnTestLC_SoilMAX<-dunnTest(MAX ~ LC, data = LC_Soil, method = "bh",list=TRUE)
+dunnTestLC_SoilMAX
+
+ggplot(LC_Soil,aes(x=LC,y=MAX))+
+  geom_boxplot() + ggtitle("Maximum soil moisture at 10-40 cm by land cover type")+ 
+  xlab("Land cover") + ylab("Soil moisture (m3/m3)") +
+  facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(LC_Soil,aes(x=LC,y=RANGE))+
+  geom_boxplot() + ggtitle("Range in soil moisture at 10-40 cm by land cover type")+ 
+  xlab("Land cover") + ylab("Soil moisture (m3/m3)") +
+  facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+LST
+
+```{r warning=FALSE}
+kruskal.test(MEDIAN ~ LC, data = LC_LST) 
+
+kruskal.test(RANGE ~ LC, data = LC_LST) 
+dunnTestLSTRANGE<-dunnTest(RANGE ~ LC, data = LC_LST, method = "bh",list=TRUE)
+dunnTestLSTRANGE
+
+kruskal.test(MAX ~ LC, data = LC_LST) 
 
 
-kruskal.test(MEDIAN ~ NAME, data = WMA_NDVI) 
-epsilonSquared(x = WMA_NDVI$MEDIAN, g = WMA_NDVI$NAME)
-kruskal.test(RANGE ~ NAME, data = WMA_NDVI) 
-kruskal.test(MAX ~ NAME, data = WMA_NDVI) 
 
-ggplot(WMA_NDVI,aes(x=NAME,y=RANGE))+
-  geom_boxplot() + ggtitle("NDVI (0-200) range in communal lands")+ 
-  xlab("Communal land") + ylab("NDVI") +
+
+ggplot(LC_LST,aes(x=LC,y=RANGE))+
+  geom_boxplot() + ggtitle("Range in LST by land cover type")+ 
+  xlab("Land cover") + ylab("LST (K)") +
   facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
 
-Tests and plots for precip and LST by communal land
-```{r}
-kruskal.test(MEDIAN ~ NAME, data = WMA_Precip) 
-kruskal.test(RANGE ~ NAME, data = WMA_Precip) 
-kruskal.test(MAX ~ NAME, data = WMA_Precip) 
 
-kruskal.test(MEDIAN ~ NAME, data = WMA_LST) 
-kruskal.test(RANGE ~ NAME, data = WMA_LST) 
-kruskal.test(MAX ~ NAME, data = WMA_LST) 
+***IV. Land Cover-crop raiding season***
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#NDVI Plots for crop raiding period 
+#Range NDVI
+LC_NDVI_CR<-LC_NDVI %>% 
+  filter(Month%in% c("03", "04", "05"))
+p1<-ggplot(LC_NDVI_CR,aes(x=Month,y=MEDIAN,color=LC))+
+  geom_point()+
+  xlab("Month") + ylab("Median NDVI (0-200)") +ggtitle("Median NDVI by land cover during crop raiding season") +
+  facet_wrap(~Year)
+p1<-p1 + scale_color_discrete(name="Land cover")
+p1
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#NDVI Plots for crop raiding period 
+#Range NDVI
+LC_NDVI_CR<-LC_NDVI %>% 
+  filter(Month%in% c("03", "04", "05"))
+p1<-ggplot(LC_NDVI_CR,aes(x=Month,y=RANGE,color=LC))+
+  geom_point()+
+  xlab("Month") + ylab("Range NDVI (0-200)") +ggtitle("Range in NDVI values by land cover during crop raiding season") +
+  facet_wrap(~Year)
+p1<-p1 + scale_color_discrete(name="Land cover")
+p1
+```
+
+Maximum NDVI CR by LC
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#NDVI Plots for crop raiding period 
+#Maximum NDVI
+LCNDVI_CR<-LC_NDVI %>% 
+  filter(Month%in% c("03", "04", "05"))
+p1<-ggplot(LCNDVI_CR,aes(x=Month,y=MAX,color=LC))+
+  geom_point()+
+  xlab("Month") + ylab("Maximum NDVI (0-200)") +ggtitle("Maximum NDVI during crop raiding season by land cover") +
+  facet_wrap(~Year)
+p1<-p1 + scale_color_discrete(name="Land cover type")
+p1
+```
+
+Statistics CR period only-NDVI
+
+```{r}
+kruskal.test(MEDIAN ~ LC, data = LCNDVI_CR) 
+dunnTestLCNDVI_CR_MEDIAN<-dunnTest(MEDIAN ~ LC, data = LCNDVI_CR, method = "bh",list=TRUE)
+dunnTestLCNDVI_CR_MEDIAN
+
+kruskal.test(RANGE ~ LC, data = LCNDVI_CR) 
+dunnTestLCNDVI_CR_RANGE<-dunnTest(RANGE ~ LC, data = LCNDVI_CR, method = "bh",list=TRUE)
+dunnTestLCNDVI_CR_RANGE
+
+kruskal.test(MAX ~ LC, data = LCNDVI_CR) 
+dunnTestLCNDVI_CR_MAX<-dunnTest(MAX ~ LC, data = LCNDVI_CR, method = "bh",list=TRUE)
+dunnTestLCNDVI_CR_MAX
+```
+Statistics precipitation CR period only
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Precip Plots for crop raiding period 
+#Range Precip
+LC_Precip_CR<-LC_Precip %>% 
+  filter(Month%in% c("03", "04", "05"))
+p1<-ggplot(LC_Precip_CR,aes(x=Month,y=RANGE,color=LC))+
+  geom_point()+
+  xlab("Month") + ylab("Precipitation Range (mm)") +ggtitle("Precipitation by land cover prior to crop raiding season") +
+  facet_wrap(~Year)
+p1<-p1 + scale_color_discrete(name="Land cover")
+p1
+```
+Statistics CR period only-precip
+
+```{r}
+kruskal.test(MEDIAN ~ LC, data = LC_Precip_CR) 
+dunnTestLCPrecip_CR_MEDIAN<-dunnTest(MEDIAN ~ LC, data = LC_Precip_CR, method = "bh",list=TRUE)
+kruskal.test(RANGE ~ LC, data = LC_Precip_CR) 
+dunnTestLCPrecip_CR_RANGE<-dunnTest(RANGE ~ LC, data = LC_Precip_CR, method = "bh",list=TRUE)
+kruskal.test(MAX ~ LC, data = LC_Precip_CR) 
+dunnTestLCPrecip_CR_MAX<-dunnTest(MAX ~ LC, data = LC_Precip_CR, method = "bh",list=TRUE)
+```
+
+Statistics CR period only-soil
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Soil Plots for crop raiding period 
+LC_Soil_CR<-LC_Soil %>% 
+  filter(Month%in% c("3", "4", "5"))
+         
+kruskal.test(MEDIAN ~ LC, data = LC_Soil_CR) 
+kruskal.test(RANGE ~ LC, data = LC_Soil_CR) 
+dunnTestLCSoil_CR_RANGE<-dunnTest(RANGE ~ LC, data = LC_Soil_CR, method = "bh",list=TRUE)
+dunnTestLCSoil_CR_RANGE
+kruskal.test(MAX ~ LC, data = LC_Soil_CR) 
+dunnTestLCSoil_CR_MAX<-dunnTest(MAX ~ LC, data = LC_Soil_CR, method = "bh",list=TRUE)
+dunnTestLCSoil_CR_MAX
 ```
 
 
-Tests and plots for soil distribution by communal land
-```{r}
+Stats CR period only-LST
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Soil Plots for crop raiding period 
+#Range soil
+LC_LST_CR<-LC_LST %>% 
+  filter(Month%in% c("03", "04", "05"))
+kruskal.test(MEDIAN ~ LC, data = LC_LST_CR) 
+kruskal.test(RANGE ~ LC, data = LC_LST_CR) 
+kruskal.test(MAX ~ LC, data = LC_LST_CR) 
+dunnTestLCLST_CR_RANGE<-dunnTest(RANGE ~ LC, data = LC_LST_CR, method = "bh",list=TRUE)
+dunnTestLCLST_CR_RANGE
 
-kruskal.test(MEDIAN ~ NAME, data = WMA_Soil) 
-kruskal.test(RANGE ~ NAME, data = WMA_Soil) 
-kruskal.test(MAX ~ NAME, data = WMA_Soil) 
-
-ggplot(WMA_Soil,aes(x=NAME,y=MEDIAN))+
-  geom_boxplot() + ggtitle("Median soil moisture (10 to 40 cm depth) in communal lands")+ 
-  xlab("Communal land") + ylab("Soil moisture (m3/m3)") +
-  facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-ggplot(WMA_Soil,aes(x=NAME,y=RANGE))+
-  geom_boxplot() + ggtitle("Soil moisture (10 to 40 cm depth) range in communal lands")+ 
-  xlab("Communal land") + ylab("Soil moisture (m3/m3)") +
-  facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-ggplot(WMA_Soil,aes(x=NAME,y=MAX))+
-  geom_boxplot() + ggtitle("Maximum soil moisture (10 to 40 cm depth) in communal lands")+ 
-  xlab("Communal land") + ylab("Soil moisture (m3/m3)") +
-  facet_wrap(~Year) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
-
